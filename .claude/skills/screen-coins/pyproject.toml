@@ -1,0 +1,10 @@
+[project]
+name = "claude-trade-screener"
+version = "0.1.0"
+description = "Trade screener application"
+requires-python = ">=3.8"
+dependencies = [
+    "requests",
+    "python-dotenv",
+    "playwright",
+]
