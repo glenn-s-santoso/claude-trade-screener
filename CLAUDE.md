@@ -23,6 +23,8 @@ uv run scripts/screen_cmc.py              # Fetch & filter top coins by vol/mcap
 uv run scripts/screenshot_coinglass.py    # Screenshot 4H charts from Coinglass
 ```
 
+After analyzing the charts, save the result to `LLM_RESULT.md`.
+
 ## Structure
 
 - `.claude/skills/screen-coins/scripts/screen_cmc.py` — CoinMarketCap API → filter by volume/market_cap ratio ≥ 0.2 → top 20 → JSON

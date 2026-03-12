@@ -35,7 +35,7 @@ Run the full screening pipeline and analyze charts for trade setups.
    - **Setup rating**: STRONG BUY / BUY / NEUTRAL / AVOID
 
 4. **Present final results**
+   **Save your result (override if needed) tp `LLM_RESULT.md`.**
    Show a ranked table of all analyzed coins sorted by setup quality.
    Highlight the top 3-5 actionable setups with brief reasoning for each.
    Include entry zones and invalidation levels where visible on the chart.
-   Save your result (override if needed) tp `LLM_RESULT.md`.

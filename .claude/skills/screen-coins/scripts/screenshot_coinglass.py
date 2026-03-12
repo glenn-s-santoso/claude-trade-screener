@@ -22,7 +22,7 @@ def screenshot_coin(page, symbol: str, url: str, max_retries: int = 3) -> bool:
         try:
             page.goto(url, wait_until="domcontentloaded", timeout=30000)
             # Wait for TradingView canvas to render
-            time.sleep(5)
+            time.sleep(10)
             output = CHARTS_DIR / f"{symbol}.png"
             page.screenshot(path=str(output), full_page=False)
             if attempt > 0:
