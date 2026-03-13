@@ -6,7 +6,7 @@ Hybrid crypto screening tool: Python scripts handle data fetching/filtering/scre
 
 ```bash
 uv sync
-playwright install chromium
+uv run playwright install chromium
 cp .env.example .env  # Add your CMC_API_KEY
 ```
 

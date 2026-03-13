@@ -5,7 +5,7 @@ import json
 import time
 from pathlib import Path
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import Page, sync_playwright
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 RESULTS_FILE = DATA_DIR / "screening_results.json"
@@ -17,7 +17,7 @@ LOCAL_STORAGE_ITEMS = {
 }
 
 
-def screenshot_coin(page, symbol: str, url: str, max_retries: int = 3) -> bool:
+def screenshot_coin(page: Page, symbol: str, url: str, max_retries: int = 3) -> bool:
     for attempt in range(max_retries):
         try:
             page.goto(url, wait_until="domcontentloaded", timeout=30000)
