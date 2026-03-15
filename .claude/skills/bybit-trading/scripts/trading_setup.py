@@ -3,6 +3,7 @@ import math
 import os
 import argparse
 import json
+from typing import Optional
 from dotenv import load_dotenv
 from pybit.exceptions import InvalidRequestError
 from pybit.unified_trading import HTTP
@@ -20,15 +21,19 @@ class TradingSetup:
         self._session = HTTP(testnet=testnet, api_key=api_key, api_secret=api_secret)
         logger.info("TradingSetup initialized (testnet=%s)", testnet)
 
-    def get_max_leverage(self, symbol: str) -> str:
+    def get_instruments_info(self, symbol: str) -> dict:
         try:
             resp = self._session.get_instruments_info(category="linear", symbol=symbol)
-            max_lev = resp["result"]["list"][0]["leverageFilter"]["maxLeverage"]
-            logger.info("Max leverage for %s: %s", symbol, max_lev)
-            return max_lev
+            return resp["result"]["list"][0]
         except Exception:
-            logger.exception("Failed to get max leverage for %s", symbol)
+            logger.exception("Failed to get instruments info for %s", symbol)
             raise
+
+    def get_max_leverage(self, symbol: str) -> str:
+        info = self.get_instruments_info(symbol)
+        max_lev = info["leverageFilter"]["maxLeverage"]
+        logger.info("Max leverage for %s: %s", symbol, max_lev)
+        return max_lev
 
     def set_leverage(self, symbol: str, leverage: str = None) -> dict:
         try:
@@ -85,33 +90,13 @@ class TradingSetup:
             logger.exception("Failed to place order for %s", symbol)
             raise
 
-    def calculate_qty(self, symbol: str, entry_price: str, stop_loss: str) -> str:
-        try:
-            risk_per_unit = abs(float(entry_price) - float(stop_loss))
-            raw_qty = self._risk_per_trade / risk_per_unit
-
-            resp = self._session.get_instruments_info(category="linear", symbol=symbol)
-            qty_step = float(
-                resp["result"]["list"][0]["lotSizeFilter"]["qtyStep"]
-            )
-
-            # Round down to nearest qty_step
-            step_decimals = len(str(qty_step).rstrip("0").split(".")[-1]) if "." in str(qty_step) else 0
-            qty = math.floor(raw_qty / qty_step) * qty_step
-            qty_str = f"{qty:.{step_decimals}f}"
-
-            logger.info(
-                "Calculated qty for %s: %s (risk=$%.2f, risk_per_unit=%s, step=%s)",
-                symbol,
-                qty_str,
-                self._risk_per_trade,
-                risk_per_unit,
-                qty_step,
-            )
-            return qty_str
-        except Exception:
-            logger.exception("Failed to calculate qty for %s", symbol)
-            raise
+    def calculate_qty(self, entry_price: str, stop_loss: str, qty_step: float) -> str:
+        risk_per_unit = abs(float(entry_price) - float(stop_loss))
+        raw_qty = self._risk_per_trade / risk_per_unit
+        # Round down to nearest qty_step
+        step_decimals = len(str(qty_step).rstrip("0").split(".")[-1]) if "." in str(qty_step) else 0
+        qty = math.floor(raw_qty / qty_step) * qty_step
+        return f"{qty:.{step_decimals}f}"
 
     def setup_and_trade(
         self,
@@ -121,13 +106,21 @@ class TradingSetup:
         take_profit: str,
         tp_limit_price: str,
         stop_loss: str,
-        qty: str = None,
+        qty: Optional[str] = None,
     ) -> dict:
         try:
-            if qty is None:
-                qty = self.calculate_qty(symbol, entry_price, stop_loss)
+            info = self.get_instruments_info(symbol)
+            max_lev = info["leverageFilter"]["maxLeverage"]
+            logger.info("Max leverage for %s: %s", symbol, max_lev)
 
-            max_lev = self.get_max_leverage(symbol)
+            if qty is None:
+                qty_step = float(info["lotSizeFilter"]["qtyStep"])
+                qty = self.calculate_qty(entry_price, stop_loss, qty_step)
+                logger.info(
+                    "Calculated qty for %s: %s (risk=$%.2f, step=%s)",
+                    symbol, qty, self._risk_per_trade, qty_step,
+                )
+
             logger.info("Using max leverage %s for %s", max_lev, symbol)
             self.set_leverage(symbol, max_lev)
 
@@ -165,7 +158,7 @@ if __name__ == "__main__":
     take_profit: str = args.take_profit
     tp_limit_price: str = args.tp_limit_price
     stop_loss: str = args.stop_loss
-    qty: str | None = args.qty
+    qty: Optional[str] = args.qty
 
     ts = TradingSetup(testnet=args.testnet)
     result = ts.setup_and_trade(
