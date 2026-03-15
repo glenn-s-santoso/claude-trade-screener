@@ -33,6 +33,9 @@ After analyzing the charts, save the result to `LLM_RESULT.md`.
 - `.claude/skills/screen-coins/data/` — Runtime output (gitignored): `screening_results.json` and `charts/*.png`
 - `LLM_RESULT.md` — Analysis results from Claude (gitignored)
 
+- `.claude/skills/bybit-trading/scripts/trading_setup.py` — Sets max leverage + places Limit order with Partial TP (Limit) + Market SL via Bybit V5 API
+- `.claude/skills/bybit-trading/SKILL.md` — Claude skill; invocable with explicit args or from a chart image
+
 ## Notes
 
 - User trades on **Bybit**, so Coinglass URLs use `Bybit_{SYMBOL}USDT`
