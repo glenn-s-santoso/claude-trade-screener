@@ -1,0 +1,6 @@
+[project]
+name = "bybit-trading-skill"
+version = "0.1.0"
+description = "Bybit V5 trading setup skill"
+requires-python = ">=3.8"
+dependencies = ["pybit", "python-dotenv"]
