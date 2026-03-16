@@ -17,7 +17,7 @@ class TradingSetup:
     def __init__(self, testnet: bool = False):
         api_key = os.environ["BYBIT_API_KEY"]
         api_secret = os.environ["BYBIT_API_SECRET"]
-        self._risk_per_trade = float(os.environ.get("RISK_PER_TRADE", "100"))
+        self._risk_per_trade = float(os.environ.get("RISK_PER_TRADE", "1"))
         self._session = HTTP(testnet=testnet, api_key=api_key, api_secret=api_secret)
         logger.info("TradingSetup initialized (testnet=%s)", testnet)
 
