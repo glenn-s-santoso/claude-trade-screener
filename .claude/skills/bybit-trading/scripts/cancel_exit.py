@@ -52,18 +52,22 @@ def market_exit_positions(session: HTTP, symbols: list[str] | None) -> list[dict
         size = pos["size"]
         # Opposite side to close
         close_side = "Sell" if pos["side"] == "Buy" else "Buy"
-        resp = session.place_order(
-            category="linear",
-            symbol=sym,
-            side=close_side,
-            orderType="Market",
-            qty=size,
-            timeInForce="IOC",
-            positionIdx=0,
-            reduceOnly=True,
-        )
-        results.append({"symbol": sym, "side": close_side, "qty": size, "result": resp["result"]})
-        logger.info("Market exit %s %s qty=%s: %s", sym, close_side, size, resp)
+        try:
+            resp = session.place_order(
+                category="linear",
+                symbol=sym,
+                side=close_side,
+                orderType="Market",
+                qty=size,
+                timeInForce="IOC",
+                positionIdx=0,
+                reduceOnly=True,
+            )
+            results.append({"symbol": sym, "side": close_side, "qty": size, "result": resp["result"]})
+            logger.info("Market exit %s %s qty=%s: %s", sym, close_side, size, resp)
+        except Exception as e:
+            logger.error("Failed to exit %s %s qty=%s: %s", sym, close_side, size, e)
+            results.append({"symbol": sym, "side": close_side, "qty": size, "error": str(e)})
 
     return results
 
@@ -115,7 +119,10 @@ def main():
         print(f"\n=== Market Exits{label} ===")
         if output["exited_positions"]:
             for r in output["exited_positions"]:
-                print(f"  {r['symbol']} {r['side']} qty={r['qty']} → orderId={r['result'].get('orderId', 'N/A')}")
+                if "error" in r:
+                    print(f"  {r['symbol']} {r['side']} qty={r['qty']} → ERROR: {r['error']}")
+                else:
+                    print(f"  {r['symbol']} {r['side']} qty={r['qty']} → orderId={r['result'].get('orderId', 'N/A')}")
         else:
             print("  (no open positions)")
 

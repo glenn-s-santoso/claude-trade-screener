@@ -22,7 +22,6 @@ DEFAULT_TIMEFRAMES = ["h1", "h4", "m15"]
 
 
 def build_coinglass_url(symbol: str) -> str:
-    symbol = symbol.upper().removesuffix("USDT")
     return f"https://www.coinglass.com/tv/Bybit_{symbol}USDT"
 
 

@@ -22,7 +22,7 @@ def get_positions(session: HTTP, symbol: str = None) -> list:
 
 
 def get_open_orders(session: HTTP, symbol: str = None) -> list:
-    kwargs = {"category": "linear", "settleCoin": "USDT", "openOnly": 0}
+    kwargs = {"category": "linear", "settleCoin": "USDT", "openOnly": 1}
     if symbol:
         kwargs["symbol"] = symbol.upper()
     resp = session.get_open_orders(**kwargs)
@@ -61,6 +61,7 @@ def format_order(o: dict) -> str:
         f"TP={tp} | SL={sl} | status={status} | id={order_id}..."
     )
 
+
 def normalize_symbol(symbol: str | None) -> str | None:
     """Normalize symbol to uppercase and ensure USDT suffix."""
     if not symbol:
@@ -88,7 +89,7 @@ def main():
         print(json.dumps({"positions": positions, "orders": orders}, indent=2))
         return
 
-    label = f" ({symbol.upper()})" if symbol else ""
+    label = f" ({symbol})" if symbol else ""
 
     print(f"\n=== Open Positions{label} ({len(positions)}) ===")
     if positions:

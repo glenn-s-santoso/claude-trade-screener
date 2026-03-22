@@ -42,6 +42,7 @@ After analyzing the charts, save the result to `LLM_RESULT.md`.
 
 - `.claude/skills/bybit-trading/scripts/trading_setup.py` — Sets max leverage + places Limit order with Partial TP (Limit) + Market SL via Bybit V5 API
 - `.claude/skills/bybit-trading/scripts/position_status.py` — Fetches open positions and orders from Bybit V5
+- `.claude/skills/bybit-trading/scripts/cancel_exit.py` — Cancels open orders and/or market-exits positions via Bybit V5
 - `.claude/skills/bybit-trading/SKILL.md` — Claude skill; invocable with explicit args or from a chart image; also handles `/bybit-trading status`
 
 ## Notes

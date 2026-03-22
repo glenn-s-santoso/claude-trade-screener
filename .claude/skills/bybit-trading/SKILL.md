@@ -132,3 +132,5 @@ uv run python scripts/cancel_exit.py --cancel --exit --testnet
 ```
 
 When invoked as a skill (e.g. `/bybit-trading cancel BTCUSDT,ETHUSDT` or `/bybit-trading exit`), parse the user's intent and run the appropriate command above from `.claude/skills/bybit-trading/`.
+
+> **IMPORTANT:** Before running any `--exit` command (market-close positions), always show the user a summary of which positions will be closed and their sizes, and wait for explicit confirmation. Market exits are irreversible live orders.

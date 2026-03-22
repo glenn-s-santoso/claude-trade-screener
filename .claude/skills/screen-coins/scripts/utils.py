@@ -41,4 +41,3 @@ def screenshot_page(page: Page, url: str, output: Path, label: str, max_retries:
             else:
                 print(f"  ✗ {label}: {e}")
                 return False
-    return False
