@@ -78,3 +78,57 @@ All arguments except `--qty` are required. Add `--testnet` to hit the testnet en
 When invoked as a skill (e.g. `/bybit-trading BTCUSDT Buy 60000 TP=63000 TPLimit=62950 SL=58000`), parse the user's arguments and run the command above from `.claude/skills/bybit-trading/`.
 
 If the user attaches a chart image instead of providing explicit values, extract the parameters visually from the chart, show a confirmation summary, and only proceed after the user confirms.
+
+---
+
+## Position & Order Status
+
+Check open positions and orders with `/bybit-trading status` or `/bybit-trading status BTCUSDT`.
+
+Run (from `.claude/skills/bybit-trading/`):
+
+```bash
+uv run python scripts/position_status.py              # all positions & orders
+uv run python scripts/position_status.py --symbol BTCUSDT   # filtered by symbol
+uv run python scripts/position_status.py --json       # raw JSON output
+uv run python scripts/position_status.py --testnet    # use testnet
+```
+
+Output shows per-position: symbol, side, size, avg entry, mark price, unrealised PnL, leverage, liquidation price, TP/SL.
+Output shows per-order: symbol, side, type, qty, price, TP/SL, status, order ID.
+
+---
+
+## Cancel Orders & Market Exit
+
+Cancel unfilled orders and/or market-close open positions via `/bybit-trading cancel` or `/bybit-trading exit`.
+
+If no symbols are specified, the action applies to **all** open orders/positions.
+Use comma-separated symbols to target specific ones.
+
+Run (from `.claude/skills/bybit-trading/`):
+
+```bash
+# Cancel all open orders (all symbols)
+uv run python scripts/cancel_exit.py --cancel
+
+# Cancel open orders for specific symbols
+uv run python scripts/cancel_exit.py --cancel --symbols BTCUSDT,ETHUSDT
+
+# Market-exit all open positions
+uv run python scripts/cancel_exit.py --exit
+
+# Market-exit specific positions
+uv run python scripts/cancel_exit.py --exit --symbols BTCUSDT
+
+# Cancel orders AND exit positions in one go
+uv run python scripts/cancel_exit.py --cancel --exit --symbols BTCUSDT,ETHUSDT
+
+# Raw JSON output
+uv run python scripts/cancel_exit.py --cancel --exit --json
+
+# Testnet
+uv run python scripts/cancel_exit.py --cancel --exit --testnet
+```
+
+When invoked as a skill (e.g. `/bybit-trading cancel BTCUSDT,ETHUSDT` or `/bybit-trading exit`), parse the user's intent and run the appropriate command above from `.claude/skills/bybit-trading/`.
