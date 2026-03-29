@@ -5,7 +5,9 @@ import json
 import time
 from pathlib import Path
 
-from playwright.sync_api import Page, sync_playwright
+from playwright.sync_api import Page
+
+from utils import coinglass_page, screenshot_page
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 RESULTS_FILE = DATA_DIR / "screening_results.json"
@@ -18,27 +20,7 @@ LOCAL_STORAGE_ITEMS = {
 
 
 def screenshot_coin(page: Page, symbol: str, url: str, max_retries: int = 3) -> bool:
-    for attempt in range(max_retries):
-        try:
-            page.goto(url, wait_until="domcontentloaded", timeout=30000)
-            # Wait for TradingView canvas to render
-            time.sleep(10)
-            output = CHARTS_DIR / f"{symbol}.png"
-            page.screenshot(path=str(output), full_page=False)
-            if attempt > 0:
-                print(f"  ✓ {symbol} (retry {attempt})")
-            else:
-                print(f"  ✓ {symbol}")
-            return True
-        except Exception as e:
-            if attempt < max_retries - 1:
-                wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
-                print(f"  ⟳ {symbol}: Retry {attempt + 1}/{max_retries} after {wait_time}s...")
-                time.sleep(wait_time)
-            else:
-                print(f"  ✗ {symbol}: {e}")
-                return False
-    return False
+    return screenshot_page(page, url, CHARTS_DIR / f"{symbol}.png", symbol, max_retries)
 
 
 def main():
@@ -52,16 +34,7 @@ def main():
     CHARTS_DIR.mkdir(parents=True, exist_ok=True)
     print(f"Taking screenshots for {len(coins)} coins...")
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context(
-            viewport={"width": 1920, "height": 1080},
-            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-        )
-
-        # Seed localStorage by visiting coinglass first
-        page = context.new_page()
-        page.goto("https://www.coinglass.com", wait_until="domcontentloaded", timeout=30000)
+    with coinglass_page() as page:
         for key, value in LOCAL_STORAGE_ITEMS.items():
             page.evaluate(f"localStorage.setItem('{key}', '{value}')")
 
@@ -71,8 +44,6 @@ def main():
                 time.sleep(1.5)
             if screenshot_coin(page, coin["symbol"], coin["coinglass_url"]):
                 success += 1
-
-        browser.close()
     print(f"Done. {success}/{len(coins)} screenshots saved to {CHARTS_DIR}")
 
 

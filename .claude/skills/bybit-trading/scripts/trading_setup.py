@@ -4,21 +4,17 @@ import os
 import argparse
 import json
 from typing import Optional
-from dotenv import load_dotenv
 from pybit.exceptions import InvalidRequestError
-from pybit.unified_trading import HTTP
 
-load_dotenv()
+from session import get_session
 
 logger = logging.getLogger(__name__)
 
 
 class TradingSetup:
     def __init__(self, testnet: bool = False):
-        api_key = os.environ["BYBIT_API_KEY"]
-        api_secret = os.environ["BYBIT_API_SECRET"]
         self._risk_per_trade = float(os.environ.get("RISK_PER_TRADE", "1"))
-        self._session = HTTP(testnet=testnet, api_key=api_key, api_secret=api_secret)
+        self._session = get_session(testnet=testnet)
         logger.info("TradingSetup initialized (testnet=%s)", testnet)
 
     def get_instruments_info(self, symbol: str) -> dict:
