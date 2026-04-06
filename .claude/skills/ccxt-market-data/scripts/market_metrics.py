@@ -38,6 +38,9 @@ OI_LIMIT        = 500
 FUNDING_LIMIT   = 1000
 MAX_CVD_BATCHES = 100
 
+# Default spot exchanges for aggregated CVD
+SPOT_CVD_EXCHANGES = ["binance", "okx", "bybit", "coinbase", "bitfinex", "kraken", "bitstamp", "cryptocom"]
+
 QUIET = False
 
 
@@ -190,7 +193,21 @@ def fetch_spot_cvd(spot_ex: ccxt.Exchange, spot_symbol: str, cvd_hours: float, c
     final_cvd  = float(candles["cvd"].iloc[-1]) if not candles.empty else 0
 
     direction = "positive" if net_delta > 0 else "negative"
-    _print(f"  CVD direction: {direction}  final_cvd={final_cvd:.4f}")
+
+    cvd_series = candles["cvd"].tolist()
+    trend = "insufficient_data"
+    if len(cvd_series) >= 4:
+        quarter = len(cvd_series) // 4
+        early_avg = sum(cvd_series[:quarter]) / quarter
+        late_avg  = sum(cvd_series[-quarter:]) / quarter
+        if late_avg > early_avg * 1.02:
+            trend = "rising"
+        elif late_avg < early_avg * 0.98:
+            trend = "falling"
+        else:
+            trend = "flat"
+
+    _print(f"  CVD direction: {direction}  final_cvd={final_cvd:.4f}  trend={trend}")
 
     return {
         "hours":          cvd_hours,
@@ -203,12 +220,128 @@ def fetch_spot_cvd(spot_ex: ccxt.Exchange, spot_symbol: str, cvd_hours: float, c
             "net_volume_delta":  round(net_delta,  8),
             "final_cvd":         round(final_cvd,  8),
             "direction":         direction,
+            "trend":             trend,
             "interpretation": (
                 "Net buying pressure (aggressive buyers dominating)" if net_delta > 0
                 else "Net selling pressure (aggressive sellers dominating)"
             ),
         },
         "candles": candles.reset_index().rename(columns={"dt": "datetime"}).to_dict(orient="records"),
+    }
+
+
+def aggregate_spot_cvd(spot_symbol: str, cvd_hours: float, cvd_tf: str, exchanges: list[str] | None = None) -> dict:
+    """Fetch spot CVD from multiple exchanges and aggregate into a single result."""
+    if exchanges is None:
+        exchanges = SPOT_CVD_EXCHANGES
+
+    base = spot_symbol.split("/")[0]
+    usd_symbol = f"{base}/USD"
+
+    per_exchange: dict = {}
+    candle_dfs: list   = []
+    total_buy   = 0.0
+    total_sell  = 0.0
+    total_trades = 0
+
+    for ex_name in exchanges:
+        _print(f"\n--- [{ex_name}] ---")
+        try:
+            ex  = make_exchange(ex_name)
+            sym = spot_symbol
+            if sym not in ex.markets:
+                if usd_symbol in ex.markets:
+                    sym = usd_symbol
+                    _print(f"  Symbol fallback: {spot_symbol} → {usd_symbol}")
+                else:
+                    per_exchange[ex_name] = {"error": f"symbol {spot_symbol!r} (and {usd_symbol!r}) not available"}
+                    _print(f"  Skipping: symbol not available")
+                    continue
+
+            result = fetch_spot_cvd(ex, sym, cvd_hours, cvd_tf)
+
+            if "error" in result:
+                per_exchange[ex_name] = result
+                continue
+
+            per_exchange[ex_name] = {
+                "symbol_used":   sym,
+                "total_trades":  result["total_trades"],
+                "hit_batch_cap": result["hit_batch_cap"],
+                "summary":       result["summary"],
+            }
+            total_buy    += result["summary"]["total_buy_volume"]
+            total_sell   += result["summary"]["total_sell_volume"]
+            total_trades += result["total_trades"]
+
+            # Keep only the volume_delta column per candle for merging
+            candle_df = pd.DataFrame(result["candles"])
+            if not candle_df.empty:
+                candle_df = candle_df.set_index("datetime")[["volume_delta"]]
+                candle_df.columns = [ex_name]
+                candle_dfs.append(candle_df)
+
+        except Exception as e:
+            per_exchange[ex_name] = {"error": str(e)}
+            _print(f"  Error ({ex_name}): {e}")
+
+    exchanges_ok   = [ex for ex, v in per_exchange.items() if "error" not in v]
+    exchanges_fail = [ex for ex, v in per_exchange.items() if "error" in v]
+
+    if not candle_dfs:
+        return {"error": "no data from any exchange", "per_exchange": per_exchange}
+
+    # Merge all exchange candle series; outer join so every bucket is represented
+    merged = pd.concat(candle_dfs, axis=1).fillna(0)
+    merged["volume_delta"] = merged[exchanges_ok].sum(axis=1)
+    merged["cvd"]          = merged["volume_delta"].cumsum()
+
+    net_delta = total_buy - total_sell
+    final_cvd = float(merged["cvd"].iloc[-1])
+    direction = "positive" if net_delta > 0 else "negative"
+
+    cvd_series = merged["cvd"].tolist()
+    trend = "insufficient_data"
+    if len(cvd_series) >= 4:
+        quarter   = len(cvd_series) // 4
+        early_avg = sum(cvd_series[:quarter])  / quarter
+        late_avg  = sum(cvd_series[-quarter:]) / quarter
+        if late_avg > early_avg * 1.02:
+            trend = "rising"
+        elif late_avg < early_avg * 0.98:
+            trend = "falling"
+        else:
+            trend = "flat"
+
+    _print(f"\n[CVD AGGREGATE] exchanges={exchanges_ok}  direction={direction}  final_cvd={final_cvd:.4f}  trend={trend}")
+
+    agg_candles = (
+        merged[["volume_delta", "cvd"]]
+        .reset_index()
+        .rename(columns={"index": "datetime"})
+        .to_dict(orient="records")
+    )
+
+    return {
+        "hours":            cvd_hours,
+        "candle_tf":        cvd_tf,
+        "exchanges_used":   exchanges_ok,
+        "exchanges_failed": exchanges_fail,
+        "total_trades":     total_trades,
+        "summary": {
+            "total_buy_volume":  round(total_buy,  8),
+            "total_sell_volume": round(total_sell, 8),
+            "net_volume_delta":  round(net_delta,  8),
+            "final_cvd":         round(final_cvd,  8),
+            "direction":         direction,
+            "trend":             trend,
+            "interpretation": (
+                "Net buying pressure (aggressive buyers dominating)" if net_delta > 0
+                else "Net selling pressure (aggressive sellers dominating)"
+            ),
+        },
+        "per_exchange": per_exchange,
+        "candles":      agg_candles,
     }
 
 
@@ -290,8 +423,10 @@ def main():
                         help="Hours of trade history for CVD (default 4)")
     parser.add_argument("--cvd-tf",    default="5m",   dest="cvd_tf",
                         help="CVD bucket timeframe: 1m 5m 15m 1h (default 5m)")
-    parser.add_argument("--exchange",  default="binance", help="Exchange (default binance)")
-    parser.add_argument("--quiet",     action="store_true", help="Suppress progress output")
+    parser.add_argument("--exchange",     default="binance", help="Futures exchange for OI + funding (default binance)")
+    parser.add_argument("--cvd-exchange", default=None,     dest="cvd_exchange",
+                        help="Single spot exchange for CVD (default: aggregate all — binance, okx, bybit, coinbase, bitfinex, kraken, bitstamp, cryptocom)")
+    parser.add_argument("--quiet",        action="store_true", help="Suppress progress output")
     args = parser.parse_args()
 
     QUIET = args.quiet
@@ -304,13 +439,17 @@ def main():
     _print(f"Futures   : {futures_symbol}")
     _print(f"OI/FR days: {args.days}")
     _print(f"CVD window: {args.cvd_hours}h  tf={args.cvd_tf}")
+    _print(f"CVD mode  : {'single (' + args.cvd_exchange + ')' if args.cvd_exchange else 'aggregate (' + ', '.join(SPOT_CVD_EXCHANGES) + ')'}")
     _print()
 
-    spot_ex = make_exchange(args.exchange)
     fut_ex  = make_futures_exchange(args.exchange)
 
     oi      = fetch_open_interest(fut_ex,  futures_symbol, args.days)
-    cvd     = fetch_spot_cvd(spot_ex,      spot_symbol,    args.cvd_hours, args.cvd_tf)
+    if args.cvd_exchange:
+        spot_ex = make_exchange(args.cvd_exchange)
+        cvd = fetch_spot_cvd(spot_ex, spot_symbol, args.cvd_hours, args.cvd_tf)
+    else:
+        cvd = aggregate_spot_cvd(spot_symbol, args.cvd_hours, args.cvd_tf)
     funding = fetch_funding_rates(fut_ex,  futures_symbol, args.days)
 
     result = {
