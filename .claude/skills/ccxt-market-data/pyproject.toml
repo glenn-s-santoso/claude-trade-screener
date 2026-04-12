@@ -1,0 +1,9 @@
+[project]
+name = "ccxt-market-data-skill"
+version = "0.1.0"
+description = "Market microstructure data (OI, CVD, funding rates, OHLCV) via ccxt"
+requires-python = ">=3.10"
+dependencies = [
+    "ccxt",
+    "pandas",
+]

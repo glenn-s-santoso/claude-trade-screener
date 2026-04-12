@@ -2,6 +2,7 @@
 name: screen-coins
 description: Run crypto screening pipeline — fetch from CMC, screenshot charts, analyze setups
 user_invocable: true
+allowed-tools: Bash(uv run *) Bash(uv add *) Bash(uv sync *) Read Write
 ---
 
 # Crypto Trade Screener
