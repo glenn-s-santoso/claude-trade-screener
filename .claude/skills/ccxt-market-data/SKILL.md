@@ -3,6 +3,7 @@ name: ccxt-market-data
 description: Fetch market microstructure data (Open Interest, Spot CVD, Funding Rates, OHLCV, Order Book, Recent Trades) via ccxt — no API keys required
 user_invocable: true
 model: haiku
+allowed-tools: Bash(uv run *) Bash(uv add *) Bash(uv sync *) Read Write
 ---
 
 # CCXT Market Data Skill

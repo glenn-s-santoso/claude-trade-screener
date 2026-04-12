@@ -3,6 +3,7 @@ name: bybit-trading
 description: Set max leverage and place a Limit order with Partial TP (Limit) + SL (Market) on Bybit V5
 user_invocable: true
 model: haiku
+allowed-tools: Bash(uv run *) Bash(uv add *) Bash(uv sync *) Read Write
 ---
 
 # Bybit Trading Skill
