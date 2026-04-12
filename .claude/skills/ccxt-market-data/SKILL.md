@@ -124,3 +124,13 @@ Both scripts accept any common format:
 - Default exchange: Binance (most reliable, highest data availability)
 - CVD has a batch cap of 100k trades to avoid rate limiting on high-volume pairs
 - Futures data (OI, funding) uses `binanceusdm`; spot data (CVD) uses `binance`
+
+---
+
+## Additional Resources
+
+For detailed use cases and examples, see:
+
+- **Market Metrics**: [examples/market_metrics.md](examples/market_metrics.md) — 12 use cases for OI, CVD, and funding analysis
+- **OHLCV Fetch**: [examples/ohlcv_fetch.md](examples/ohlcv_fetch.md) — 10 use cases for candlestick analysis
+- **Order Book + Trades**: [examples/orderbook_traders.md](examples/orderbook_traders.md) — 8 use cases for liquidity and tape reading
