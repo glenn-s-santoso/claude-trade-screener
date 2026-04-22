@@ -7,7 +7,7 @@ from pathlib import Path
 
 from playwright.sync_api import Page
 
-from utils import coinglass_page, screenshot_page
+from scrapers.playwright_utils import coinglass_page, screenshot_page
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 CHARTS_DIR = DATA_DIR / "charts"
