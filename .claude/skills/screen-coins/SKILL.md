@@ -1,13 +1,13 @@
 ---
 name: screen-coins
-description: Run crypto screening pipeline — fetch from CMC, screenshot charts, analyze setups
+description: Run crypto screening pipeline — fetch from CMC or Santiment, analyze market microstructure via ccxt, analyze charts
 user_invocable: true
 allowed-tools: Bash(uv run *) Bash(uv add *) Bash(uv sync *) Read Write
 ---
 
 # Crypto Trade Screener
 
-Two modes: **full pipeline** (screen all CMC coins) or **specific ticker** (analyze one coin at multiple timeframes).
+Two modes: **full pipeline** (screen all coins + ccxt analysis) or **specific ticker** (analyze one coin at multiple timeframes).
 
 ---
 
@@ -45,32 +45,37 @@ Triggered when a ticker is provided, e.g. `/screen-coins BTCUSDT` or `/screen-co
 
 Default when no ticker is specified: `/screen-coins`
 
-1. **Fetch & filter coins from CoinMarketCap**
-   Run (from `.claude/skills/screen-coins/`): `uv run python scripts/screen_cmc.py`
-   Show the user a summary table of the filtered coins (symbol, price, vol/mcap ratio, 24h change).
+Optional arg: `--source cmc|santiment|coinglass` (default: cmc).
 
-2. **Take Coinglass 4H chart screenshots**
-   Run (from `.claude/skills/screen-coins/`): `uv run python scripts/screenshot_coinglass.py`
-   Report how many screenshots succeeded.
+| Source | Signal | How it works |
+|---|---|---|
+| `cmc` | vol/mcap ratio ≥ 0.2, top 20 | CMC API, no browser |
+| `santiment` | top 24h price performers | Playwright scrape, paginated |
+| `coinglass` | OI-ranked derivatives | Playwright scrape, sorts OI desc |
 
-3. **Analyze each chart**
-   Read `data/screening_results.json` to get the coin list.
-   For each coin, read the screenshot at `data/charts/{SYMBOL}.png` and analyze:
-   - **Market Structure**: uptrend / downtrend / ranging
-   - **Key levels**: support and resistance zones visible on chart
-   - **Smart Money Concepts**: order blocks, fair value gaps, buyside/sellside liquidity, ChoCh/MSS, BoS
-   - **Wyckoff Theory**: accumulation/distribution phases
-   - **Golden Cross**: golden cross patterns
-   - **Golden Pocket**: 0.5 & 0.618 fibonacci retracement levels
-   - **Order Flow**: absorption or convergence potential
-   - **Trend**: uptrend / downtrend / sideways
-   - **Volume profile**: increasing/decreasing, divergences
-   - **Patterns**: triangles, flags, head & shoulders, breakouts, etc.
-   - **On-chain Metrics**: spot and futures CVD, open interest
-   - **Setup rating**: STRONG BUY / BUY / NEUTRAL / AVOID
+1. **Fetch & filter coins**
+   Run (from `.claude/skills/screen-coins/`):
+   ```
+   uv run python scripts/screen.py --source {SOURCE}
+   ```
+   Show the user a summary table (symbol, price, 24h change, OI data if present).
+
+2. **For each coin, fetch market microstructure via ccxt-market-data**
+   Read `data/screening_results.json`. For each coin's symbol, run:
+   ```
+   uv run python ../ccxt-market-data/scripts/market_metrics.py --symbol {SYMBOL}/USDT --days 2 --cvd-hours 4
+   ```
+   Output: `../ccxt-market-data/data/market_metrics_{SYMBOL}-USDT.json`.
+   See `../ccxt-market-data/SKILL.md` and `../ccxt-market-data/examples/market_metrics.md`
+   for the interpretation guide (confluence patterns, squeeze risk, etc.).
+
+3. **Analyze and rank**
+   For each coin, read its `market_metrics_*.json` and classify:
+   - OI trend (rising/falling/flat)
+   - CVD direction (net buy/sell)
+   - Funding crowding (crowded long / crowded short / neutral)
+   - Combined bias per the confluence table in the ccxt examples
+   - Setup rating: STRONG BUY / BUY / NEUTRAL / AVOID
 
 4. **Present final results**
-   **Save your result (override if needed) to `LLM_RESULT.md`.**
-   Show a ranked table of all analyzed coins sorted by setup quality.
-   Highlight the top 3-5 actionable setups with brief reasoning for each.
-   Include entry zones and invalidation levels where visible on the chart.
+   Save to `LLM_RESULT.md`. Ranked table sorted by setup quality. Highlight top 3-5.

@@ -19,9 +19,9 @@ Run the full pipeline via the Claude skill:
 
 Or run scripts individually:
 ```bash
-uv run scripts/screen_cmc.py              # Fetch & filter top coins by vol/mcap ratio
-uv run scripts/screenshot_coinglass.py    # Screenshot 4H charts from Coinglass
-uv run scripts/screenshot_ticker.py --ticker BTCUSDT  # Screenshot specific ticker (h1, h4, m15)
+uv run python scripts/screen.py                        # Fetch & filter top coins (default: CMC)
+uv run python scripts/screen.py --source santiment     # Fetch from Santiment top performers
+uv run python scripts/screenshot_ticker.py --ticker BTCUSDT  # Screenshot specific ticker (h1, h4, m15)
 ```
 
 Analyze a specific ticker across timeframes:
@@ -33,8 +33,10 @@ After analyzing the charts, save the result to `LLM_RESULT.md`.
 
 ## Structure
 
-- `.claude/skills/screen-coins/scripts/screen_cmc.py` — CoinMarketCap API → filter by volume/market_cap ratio ≥ 0.2 → top 20 → JSON
-- `.claude/skills/screen-coins/scripts/screenshot_coinglass.py` — Playwright screenshots of Coinglass 4H charts for each coin
+- `.claude/skills/screen-coins/scripts/screen.py` — Unified CLI: `--source cmc|santiment` → filter → JSON
+- `.claude/skills/screen-coins/scripts/sources/cmc.py` — CoinMarketCap API → filter by volume/market_cap ratio ≥ 0.2 → top 20
+- `.claude/skills/screen-coins/scripts/sources/santiment.py` — Playwright scraper for Santiment top price performers
+- `.claude/skills/screen-coins/scripts/sources/coinglass.py` — Playwright scraper for Coinglass derivatives table sorted by OI descending
 - `.claude/skills/screen-coins/scripts/screenshot_ticker.py` — Playwright screenshots for a specific ticker at h1, h4, m15 timeframes
 - `.claude/skills/screen-coins/SKILL.md` — Claude skill (two modes: full pipeline or specific ticker)
 - `.claude/skills/screen-coins/data/` — Runtime output (gitignored): `screening_results.json` and `charts/*.png`
@@ -48,6 +50,7 @@ After analyzing the charts, save the result to `LLM_RESULT.md`.
 ## Notes
 
 - User trades on **Bybit**, so Coinglass URLs use `Bybit_{SYMBOL}USDT`
-- Charts are set to **4H timeframe** via localStorage injection (full pipeline) or specified timeframe (specific ticker)
-- CMC API free tier: 200 coins per call, 1 credit per call
+- Mode B uses ccxt numerical analysis (OI, CVD, funding) — no screenshots needed
+- Charts are set to **specified timeframe** via localStorage injection (specific ticker mode)
+- CMC API free tier: 500 coins per call, 1 credit per call
 - Specific ticker screenshots saved as `charts/{SYMBOL}_{TIMEFRAME}.png` (e.g. `BTC_h4.png`)
